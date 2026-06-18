@@ -49,7 +49,7 @@ __plugin_meta__ = PluginMetadata(
     name="牛牛状态",
     description="查询牛牛在线状态、群内报数与离线邮件通知。",
     usage=join_usage(
-        usage_line("牛牛在吗", "号主查看在线/离线牛牛"),
+        usage_line("牛牛在吗", "查看在线和离线情况"),
         usage_line("牛牛报数 / 牛牛出列", "群内在线牛牛依次报到"),
         usage_line("测试邮件", "超管测试 SMTP"),
     ),
@@ -91,8 +91,8 @@ __plugin_meta__ = PluginMetadata(
                 "command_permission": "bot_status.status",
                 "brief_des": "查看在线情况",
                 "detail_des": (
-                    "列出在线与离线牛牛；名册范围可在插件配置中选择（本机、协议端登记、"
-                    "曾连上过等）。离线过久会发邮件，另有宽限时间。"
+                    "列出当前在线和离线的牛牛；名册范围可按配置决定是看本机、协议端登记还是更大范围。"
+                    "如果离线太久，还会按配置触发邮件提醒。"
                 ),
             },
             {
@@ -102,7 +102,7 @@ __plugin_meta__ = PluginMetadata(
                 "trigger_condition": "测试邮件",
                 "command_permission": "bot_status.test_mail",
                 "brief_des": "发送测试邮件",
-                "detail_des": "给配置中的邮箱发送测试邮件",
+                "detail_des": "向当前配置的通知邮箱发送一封测试邮件，确认 SMTP 是否可用。",
             },
             {
                 "func": "牛牛依次报数",
@@ -111,7 +111,7 @@ __plugin_meta__ = PluginMetadata(
                 "trigger_condition": "牛牛报数 / 牛牛出列",
                 "command_permission": "bot_status.count",
                 "brief_des": "在线牛牛依次报数",
-                "detail_des": "仅当前群内在线 Bot 参与，随机顺序在群内轮流报数",
+                "detail_des": "只让当前群里在线的牛牛参与，按顺序在群内轮流报数或出列。",
             },
         ],
     },

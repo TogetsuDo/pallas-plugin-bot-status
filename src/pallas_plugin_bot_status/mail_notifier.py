@@ -3,9 +3,9 @@ from datetime import datetime
 from nonebot import logger
 
 from pallas.api.config import get_bot_admins
+from pallas.api.utils import build_mail_config, get_smtp_config, send_mail
 
-from .config import MailConfig, get_bot_status_config
-from .utils import send_mail
+from .config import get_bot_status_config
 
 STATUS_COOLDOWN_KEY: str = "bot_status"
 
@@ -31,13 +31,7 @@ async def notify_bot_offline(
     cfg = get_bot_status_config()
     admin_emails: list[str] = await get_bot_admin_emails(bot_id)
 
-    mail_config: MailConfig = MailConfig(
-        user=cfg.bot_status_smtp_user,
-        password=cfg.bot_status_smtp_password,
-        server=cfg.bot_status_smtp_server,
-        port=cfg.bot_status_smtp_port,
-        notice_email=cfg.bot_status_notice_email,
-    )
+    mail_config = build_mail_config(cfg.bot_status_notice_email)
 
     # 发送邮件通知
     if mail_config.check_params():
@@ -67,13 +61,7 @@ async def notify_bot_offline(
         # 发送给admin邮箱
         for email in admin_emails:
             try:
-                admin_mail_config: MailConfig = MailConfig(
-                    user=cfg.bot_status_smtp_user,
-                    password=cfg.bot_status_smtp_password,
-                    server=cfg.bot_status_smtp_server,
-                    port=cfg.bot_status_smtp_port,
-                    notice_email=email,
-                )
+                admin_mail_config = build_mail_config(email)
                 result = await send_mail(title, content, admin_mail_config)
                 if result:
                     logger.error(
@@ -105,21 +93,16 @@ async def handle_test_mail_command(bot, event) -> None:
         await config.refresh_cooldown(STATUS_COOLDOWN_KEY)
 
     cfg = get_bot_status_config()
-    mail_config: MailConfig = MailConfig(
-        user=cfg.bot_status_smtp_user,
-        password=cfg.bot_status_smtp_password,
-        server=cfg.bot_status_smtp_server,
-        port=cfg.bot_status_smtp_port,
-        notice_email=cfg.bot_status_notice_email,
-    )
+    smtp = get_smtp_config()
+    mail_config = build_mail_config(cfg.bot_status_notice_email)
 
     if not mail_config.check_params():
         missing_params: list[str] = []
-        if not cfg.bot_status_smtp_user:
+        if not smtp.smtp_user:
             missing_params.append("bot_status_smtp_user")
-        if not cfg.bot_status_smtp_password:
+        if not smtp.smtp_password:
             missing_params.append("bot_status_smtp_password")
-        if not cfg.bot_status_smtp_server:
+        if not smtp.smtp_server:
             missing_params.append("bot_status_smtp_server")
         if not cfg.bot_status_notice_email:
             missing_params.append("bot_status_notice_email")

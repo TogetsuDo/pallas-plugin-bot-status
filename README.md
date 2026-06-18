@@ -1,41 +1,42 @@
-<div align="center">
-  <img alt="Pallas-Bot" src="https://user-images.githubusercontent.com/18511905/195892994-c1a231ec-147a-4f98-ba75-137d89578247.png" width="360" height="270" />
-</div>
+<p align="center">
+  <img src="./assets/brand-avatar.png" width="220" height="220" alt="牛牛状态">
+</p>
 
-# pallas-plugin-bot-status
+<h1 align="center">牛牛状态 pallas-plugin-bot-status</h1>
 
-Pallas-Bot 4.0 官方扩展：**牛牛状态**（在吗、报数、离线邮件）。
+<p align="center">查看在线情况、群内报数，并在离线时发送邮件提醒。</p>
 
-## 安装
+<p align="center">
+  <img alt="官方插件" src="https://img.shields.io/badge/%E5%AE%98%E6%96%B9%E6%8F%92%E4%BB%B6-FE7D37">
+  <img alt="控制台插件商店" src="https://img.shields.io/badge/%E6%8E%A7%E5%88%B6%E5%8F%B0-%E6%8F%92%E4%BB%B6%E5%95%86%E5%BA%97-4EA94B">
+  <img alt="安装命令" src="https://img.shields.io/badge/uv%20run%20pallas%20ext%20install%20pallas--plugin--bot--status-586069">
+</p>
 
-需已安装 [Pallas-Bot](https://github.com/PallasBot/Pallas-Bot) **≥ 4.0**。
+## 安装方式
+
+需已安装 [Pallas-Bot](https://github.com/PallasBot/Pallas-Bot) `4.0` 或更高版本。推荐直接在控制台插件商店安装，或在本体项目中执行：
 
 ```bash
-# 在本体项目中
-uv sync --extra plugins-bot-status
+uv run pallas ext install pallas-plugin-bot-status
+```
 
-# 或单独安装本包
+也可单独安装本包：
+
+```bash
 uv pip install pallas-plugin-bot-status
 ```
 
-开发联调：clone 本仓库后在本体目录 `uv pip install -e ../pallas-plugin-bot-status`。
+## 怎么使用
 
-## 功能说明
-
-- **牛牛在吗**：列出在线/离线牛牛（名册范围可配置）
-- **牛牛报数 / 牛牛出列**：群内在线牛牛依次报到（分片模式自动协调）
-- **测试邮件**：验证 SMTP 配置
-- **离线通知**：断线超过宽限时间后向配置邮箱与群管 QQ 邮箱发信
-
-### 用户命令
-
-| 口令 | 场景 | 说明 |
+| 口令 / 触发 | 场景 | 说明 |
 | --- | --- | --- |
-| 牛牛在吗 | 群内或私聊 | 号主查在线/离线 |
-| 牛牛报数 / 牛牛出列 | 群内 | 在线牛牛依次报到 |
-| 测试邮件 | 群内或私聊 | 超管测邮件通知 |
+| `牛牛在吗` | 群内 / 私聊 | 查看在线和离线情况。 |
+| `牛牛报数` / `牛牛出列` | 群内 | 在线牛牛依次报到。 |
+| `测试邮件` | 群内 / 私聊 | 测试邮件通知配置。 |
 
-### 命令权限
+> 详细用法、限制条件和可用范围以帮助为主。
+
+## 命令权限
 
 | 命令 ID | 默认等级 |
 | --- | --- |
@@ -43,14 +44,37 @@ uv pip install pallas-plugin-bot-status
 | `bot_status.count` | everyone |
 | `bot_status.test_mail` | superuser |
 
-### 配置
+## 配置项
 
-WebUI **插件 → 牛牛状态**：SMTP、通知邮箱、离线宽限、`在吗` 名册模式（`auto` / `session` / `fleet` / `connected`）。
+> 可在控制台对应插件页中修改。
 
-## 多进程分片
+牛牛状态的常用配置包括 SMTP、通知邮箱、离线宽限时间和名册范围模式。
 
-启用分片时各 worker 须安装相同版本；**牛牛报数** 经本体 `plugin_coord` 协调顺序。
+## 排障
 
-## 许可证
+| 现象 | 处理 |
+| --- | --- |
+| 收不到邮件 | 检查 SMTP 和通知邮箱配置。 |
+| 报数不全 | 检查当前群里是否真的在线，以及分片协调是否正常。 |
+| 误报离线 | 调大离线宽限时间。 |
 
-与 [Pallas-Bot](https://github.com/PallasBot/Pallas-Bot) 相同（见 `LICENSE`）。
+## 实现
+
+源码位置：[`src/pallas_plugin_bot_status/`](./src/pallas_plugin_bot_status/)
+
+关键文件：
+
+- [`__init__.py`](./src/pallas_plugin_bot_status/__init__.py)：注册状态查询、报数和测试邮件命令。
+- [`bot_monitor.py`](./src/pallas_plugin_bot_status/bot_monitor.py)：汇总在线状态和群内可见牛牛。
+- [`mail_notifier.py`](./src/pallas_plugin_bot_status/mail_notifier.py)：发送离线通知和测试邮件。
+
+实现要点：
+
+- `牛牛在吗` 用于聚合状态，`牛牛报数` 更偏向当前群里的现场点名。
+- 邮件通知除了发到配置邮箱，还会尝试发给对应牛牛管理员的 QQ 邮箱。
+- 分片模式下，报数和状态统计会受当前配置的名册范围影响。
+
+## 相关链接
+
+- [主仓插件文档](https://PallasBot.github.io/Pallas-Bot-Docs/plugins/bot_status)
+- [Pallas-Bot](https://github.com/PallasBot/Pallas-Bot)

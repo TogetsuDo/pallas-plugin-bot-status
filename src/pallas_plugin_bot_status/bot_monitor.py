@@ -170,7 +170,7 @@ async def check_bot_still_offline(bot_id: int, nickname: str) -> None:
 
 async def list_connected_bots_in_group(group_id: int) -> list[int]:
     """本进程已连接且能查到该群成员资料的牛牛 QQ。"""
-    from pallas.api.platform_online_cache import (
+    from pallas.api.platform import (
         resolve_local_connected_bots_in_group,
     )
 
