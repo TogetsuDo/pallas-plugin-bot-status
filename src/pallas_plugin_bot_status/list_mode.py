@@ -6,10 +6,10 @@ from typing import Literal
 
 from nonebot import get_bots
 
-from src.platform.multi_bot.connected_roster import connected_bot_ids
-from src.platform.multi_bot.fleet import get_fleet_bot_ids
-from src.platform.multi_bot.session_seen import get_session_seen_bot_ids
-from src.platform.shard import context as shard_ctx
+from pallas.api.platform import connected_bot_ids
+from pallas.api.platform import get_fleet_bot_ids
+from pallas.api.platform import get_session_seen_bot_ids
+from pallas.core.platform.shard import context as shard_ctx
 
 from .config import get_bot_status_config
 
@@ -59,7 +59,7 @@ def cluster_online_bot_ids_for_status(
     mode = list_mode or resolve_status_list_mode()
     bots = current_bots if current_bots is not None else nb_get_bots()
     if shard_ctx.sharding_active() and mode in ("fleet", "connected"):
-        from src.platform.shard.presence import get_cluster_online_bot_ids
+        from pallas.api.platform import get_cluster_online_bot_ids
 
         return set(get_cluster_online_bot_ids())
     out: set[int] = set()

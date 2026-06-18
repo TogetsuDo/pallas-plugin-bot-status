@@ -2,7 +2,7 @@ from datetime import datetime
 
 from nonebot import logger
 
-from src.foundation.config import get_bot_admins
+from pallas.api.config import get_bot_admins
 
 from .config import MailConfig, get_bot_status_config
 from .utils import send_mail
@@ -97,7 +97,7 @@ async def handle_test_mail_command(bot, event) -> None:
     from nonebot.matcher import Matcher
 
     if isinstance(event, GroupMessageEvent):
-        from src.foundation.config import GroupConfig
+        from pallas.api.config import GroupConfig
 
         config = GroupConfig(group_id=event.group_id, cooldown=10)
         if not await config.is_cooldown(STATUS_COOLDOWN_KEY):

@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from src.console.webui import install_hot_reload_config
+from pallas.api.config import install_hot_reload_config
 
 StatusListModeSetting = Literal["auto", "session", "fleet", "connected"]
 

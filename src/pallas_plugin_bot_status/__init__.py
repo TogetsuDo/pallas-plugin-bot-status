@@ -17,24 +17,24 @@ from nonebot.adapters.onebot.v11 import (
 )
 from nonebot.plugin import PluginMetadata
 
-from src.features.cmd_perm import permission_for_command
-from src.features.cmd_perm.metadata_defaults import (
+from pallas.api.perm import permission_for_command
+from pallas.api.metadata import (
     PLUGIN_EXTRA_VERSION,
     PLUGIN_HOMEPAGE,
     PLUGIN_MENU_TEMPLATE,
 )
-from src.features.cmd_perm.metadata_text import (
+from pallas.api.metadata import (
     SCENE_BOTH,
     SCENE_GROUP,
     SCENE_PRIVATE,
     join_usage,
     usage_line,
 )
-from src.features.command_limits import (
+from pallas.api.limits import (
     is_command_cooldown_ready,
     refresh_command_cooldown,
 )
-from src.platform.shard import context as shard_ctx
+from pallas.core.platform.shard import context as shard_ctx
 
 from .bot_monitor import (
     get_bot_status_info,
@@ -197,7 +197,7 @@ async def handle_bot_offline_events(event: NoticeEvent):
         }
 
         qq = int(bot_id)
-        from src.platform.shard.presence import (
+        from pallas.api.platform import (
             close_local_bot_connection,
             mark_protocol_bot_offline,
         )
