@@ -35,6 +35,7 @@ from pallas.api.limits import (
     refresh_command_cooldown,
 )
 from pallas.core.platform.shard import context as shard_ctx
+from pallas.product.llm.knowledge.declare import knowledge_source_row
 
 from .bot_monitor import (
     get_bot_status_info,
@@ -113,6 +114,39 @@ __plugin_meta__ = PluginMetadata(
                 "brief_des": "在线牛牛依次报数",
                 "detail_des": "只让当前群里在线的牛牛参与，按顺序在群内轮流报数或出列。",
             },
+        ],
+        "knowledge_sources": [
+            knowledge_source_row(
+                source_id="bot_status.faq",
+                title="牛牛状态说明",
+                description="在线查询、报数与离线通知",
+                chunks=[
+                    {
+                        "title": "查看在线情况",
+                        "content": (
+                            "发送「牛牛在吗」可查看当前在线与离线的牛牛列表；"
+                            "具体可见范围取决于实例配置。"
+                        ),
+                        "keywords": "在吗,在线,离线,状态,活着",
+                    },
+                    {
+                        "title": "群内报数",
+                        "content": (
+                            "群内发送「牛牛报数」或「牛牛出列」，"
+                            "当前群里在线的牛牛会依次报到。"
+                        ),
+                        "keywords": "报数,出列,报到,依次",
+                    },
+                    {
+                        "title": "离线邮件通知",
+                        "content": (
+                            "若牛牛离线过久且已配置 SMTP，维护者可能收到邮件提醒；"
+                            "私聊「测试邮件」可验证通知邮箱（维护者向）。"
+                        ),
+                        "keywords": "邮件,离线,通知,测试邮件",
+                    },
+                ],
+            ),
         ],
     },
 )
