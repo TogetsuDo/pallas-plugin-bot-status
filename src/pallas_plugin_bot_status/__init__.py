@@ -77,6 +77,7 @@ __plugin_meta__ = PluginMetadata(
         "command_limits": [
             {"id": "bot_status.status", "cd_sec": 10},
             {"id": "bot_status.count", "cd_sec": 10},
+            {"id": "bot_status.test_mail", "cd_sec": 10},
         ],
         "ingress_fanout": {
             "scope": "shard_only",
