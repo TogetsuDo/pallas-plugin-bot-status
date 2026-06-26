@@ -21,3 +21,4 @@ uv run ruff format --check src/
 
 - 仅改 `src/`；通过 `pallas-bot` 公开 API（`src.features` / `src.platform`）访问内核。
 - 提交前 `ruff check` + `ruff format --check` 通过。
+- 维护 `CHANGELOG.md`（[Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)）：日常改动记入 `## [Unreleased]`，发布版本时归档到 `## [X.Y.Z]` 并打 `vX.Y.Z` git tag（触发 PyPI 发布）。
