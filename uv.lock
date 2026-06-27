@@ -340,7 +340,7 @@ wheels = [
 
 [[package]]
 name = "pallas-plugin-bot-status"
-version = "4.0.8"
+version = "4.0.9"
 source = { editable = "." }
 dependencies = [
     { name = "aiosmtplib" },
