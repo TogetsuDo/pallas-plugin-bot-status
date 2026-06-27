@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+## [4.0.11] - 2026-06-27
+- fix(offline_mail): 批量发信按号主合并、间隔与 Connection lost 重试，回复展示号主 QQ
+
 ## [4.0.10] - 2026-06-27
 - feat(offline_mail): 新增「离线邮件」超管命令，仅向离线牛牛号主发信
 

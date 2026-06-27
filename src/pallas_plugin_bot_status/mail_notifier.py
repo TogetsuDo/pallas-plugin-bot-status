@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -14,6 +15,9 @@ from .config import get_bot_status_config
 
 STATUS_COOLDOWN_KEY: str = "bot_status"
 OFFLINE_MAIL_COOLDOWN_KEY: str = "bot_status.offline_mail"
+OFFLINE_MAIL_SEND_INTERVAL_SEC = 2.5
+OFFLINE_MAIL_RETRY_COUNT = 2
+OFFLINE_MAIL_RETRY_DELAY_SEC = 5.0
 
 
 @dataclass(frozen=True)
@@ -24,6 +28,7 @@ class OwnerNotifyResult:
     failed: int
     skipped_no_admins: bool
     errors: tuple[str, ...]
+    notified_owner_ids: tuple[int, ...]
 
 
 def smtp_transport_ready() -> bool:
@@ -46,6 +51,50 @@ def offline_mail_content(
 掉线时间: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
     """.strip()
     return title, content
+
+
+def batch_offline_mail_content(bots: list[tuple[int, str]]) -> tuple[str, str]:
+    lines = "\n".join(f"- {nickname}（{bot_id}）" for bot_id, nickname in bots)
+    title = f"[牛牛不见啦] {len(bots)} 头牛牛已离线"
+    content = f"""
+以下牛牛当前离线：
+
+{lines}
+
+通知时间: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    """.strip()
+    return title, content
+
+
+def is_transient_mail_error(message: str) -> bool:
+    lowered = message.lower()
+    return any(
+        token in lowered
+        for token in ("connection lost", "timeout", "421", "rate", "too many")
+    )
+
+
+async def send_mail_with_retry(
+    title: str,
+    content: str,
+    owner_id: int,
+) -> str | None:
+    email = f"{owner_id}@qq.com"
+    mail_config = build_mail_config(email)
+    last_error: str | None = None
+    for attempt in range(OFFLINE_MAIL_RETRY_COUNT + 1):
+        last_error = await send_mail(title, content, mail_config)
+        if last_error is None:
+            return None
+        if attempt < OFFLINE_MAIL_RETRY_COUNT and is_transient_mail_error(last_error):
+            logger.warning(
+                f"bot_status offline mail to owner [{email}] retry {attempt + 1}/"
+                f"{OFFLINE_MAIL_RETRY_COUNT}: {last_error}"
+            )
+            await asyncio.sleep(OFFLINE_MAIL_RETRY_DELAY_SEC)
+            continue
+        return last_error
+    return last_error
 
 
 async def get_bot_admin_emails(bot_id: int) -> list[str]:
@@ -76,10 +125,16 @@ async def notify_bot_offline_to_owners(
             failed=0,
             skipped_no_admins=False,
             errors=("SMTP 配置不完整",),
+            notified_owner_ids=(),
         )
 
-    admin_emails = await get_bot_admin_emails(bot_id)
-    if not admin_emails:
+    try:
+        owner_ids = await get_bot_admins(bot_id)
+    except Exception as e:
+        logger.debug(f"bot [{bot_id}] bot_status get_bot_admins failed: {e}")
+        owner_ids = []
+
+    if not owner_ids:
         return OwnerNotifyResult(
             bot_id=bot_id,
             nickname=nickname,
@@ -87,31 +142,30 @@ async def notify_bot_offline_to_owners(
             failed=0,
             skipped_no_admins=True,
             errors=(),
+            notified_owner_ids=(),
         )
 
     title, content = offline_mail_content(bot_id, nickname, offline_reason)
     sent = 0
     failed = 0
     errors: list[str] = []
-    for email in admin_emails:
-        try:
-            mail_config = build_mail_config(email)
-            result = await send_mail(title, content, mail_config)
-            if result:
-                failed += 1
-                errors.append(f"{email}: {result}")
-                logger.error(
-                    f"bot [{bot_id}] offline mail to owner [{email}] failed: {result}"
-                )
-            else:
-                sent += 1
-                logger.info(f"bot [{bot_id}] offline mail sent to owner [{email}]")
-        except Exception as e:
+    notified_owner_ids: list[int] = []
+    for owner_id in owner_ids:
+        result = await send_mail_with_retry(title, content, owner_id)
+        if result:
             failed += 1
-            errors.append(f"{email}: {e}")
+            errors.append(f"号主 {owner_id}: {result}")
             logger.error(
-                f"bot [{bot_id}] offline mail to owner [{email}] exception: {e}"
+                f"bot [{bot_id}] offline mail to owner [{owner_id}@qq.com] failed: {result}"
             )
+        else:
+            sent += 1
+            notified_owner_ids.append(owner_id)
+            logger.info(
+                f"bot [{bot_id}] offline mail sent to owner [{owner_id}@qq.com]"
+            )
+        if len(owner_ids) > 1:
+            await asyncio.sleep(OFFLINE_MAIL_SEND_INTERVAL_SEC)
 
     return OwnerNotifyResult(
         bot_id=bot_id,
@@ -120,6 +174,7 @@ async def notify_bot_offline_to_owners(
         failed=failed,
         skipped_no_admins=False,
         errors=tuple(errors),
+        notified_owner_ids=tuple(notified_owner_ids),
     )
 
 
@@ -171,33 +226,135 @@ def parse_offline_mail_target(args: Message) -> int | None:
     return None
 
 
+def offline_bot_label(nickname: str, bot_id: int) -> str:
+    return f"{nickname}（{bot_id}）"
+
+
+def owner_ids_label(owner_ids: tuple[int, ...]) -> str:
+    return "、".join(str(owner_id) for owner_id in owner_ids)
+
+
 def format_owner_notify_summary(results: list[OwnerNotifyResult]) -> str:
-    sent_bots: list[str] = []
+    sent_lines: list[str] = []
     no_admin: list[str] = []
     failed: list[str] = []
 
     for item in results:
-        label = f"{item.nickname} ({item.bot_id})"
+        bot_label = offline_bot_label(item.nickname, item.bot_id)
         if item.skipped_no_admins:
-            no_admin.append(label)
+            no_admin.append(bot_label)
         elif item.sent > 0 and item.failed == 0:
-            sent_bots.append(label)
+            sent_lines.append(
+                f"{bot_label} → 号主 {owner_ids_label(item.notified_owner_ids)}"
+            )
         elif item.sent > 0:
-            sent_bots.append(label)
-            failed.append(f"{label}: {item.errors[0] if item.errors else '部分失败'}")
+            sent_lines.append(
+                f"{bot_label} → 号主 {owner_ids_label(item.notified_owner_ids)}"
+            )
+            failed.append(
+                f"{bot_label}: {item.errors[0] if item.errors else '部分号主发送失败'}"
+            )
         elif item.errors:
-            failed.append(f"{label}: {item.errors[0]}")
+            failed.append(f"{bot_label}: {item.errors[0]}")
         else:
-            failed.append(label)
+            failed.append(bot_label)
 
     parts: list[str] = []
-    if sent_bots:
-        parts.append(f"已通知号主：{'、'.join(sent_bots)}")
+    if sent_lines:
+        parts.append("已通知号主：\n" + "\n".join(sent_lines))
     if no_admin:
-        parts.append(f"未配置号主，已跳过：{'、'.join(no_admin)}")
+        parts.append(f"未配置号主，已跳过牛牛：{'、'.join(no_admin)}")
     if failed:
         parts.append(f"发送失败：{'；'.join(failed)}")
     return "\n".join(parts) if parts else "未发送任何邮件"
+
+
+def empty_owner_notify_result(bot_id: int, nickname: str) -> OwnerNotifyResult:
+    return OwnerNotifyResult(
+        bot_id=bot_id,
+        nickname=nickname,
+        sent=0,
+        failed=0,
+        skipped_no_admins=False,
+        errors=(),
+        notified_owner_ids=(),
+    )
+
+
+async def send_batch_offline_mails_by_owner(
+    targets: dict[int, str],
+) -> list[OwnerNotifyResult]:
+    """批量离线提醒：同一号主合并为一封，发信间隔并带重试。"""
+    results = {
+        bot_id: empty_owner_notify_result(bot_id, nickname)
+        for bot_id, nickname in targets.items()
+    }
+    owner_bots: dict[int, list[tuple[int, str]]] = {}
+
+    for bot_id, nickname in targets.items():
+        try:
+            owner_ids = await get_bot_admins(bot_id)
+        except Exception as e:
+            logger.debug(f"bot [{bot_id}] bot_status get_bot_admins failed: {e}")
+            owner_ids = []
+        if not owner_ids:
+            results[bot_id] = OwnerNotifyResult(
+                bot_id=bot_id,
+                nickname=nickname,
+                sent=0,
+                failed=0,
+                skipped_no_admins=True,
+                errors=(),
+                notified_owner_ids=(),
+            )
+            continue
+        for owner_id in owner_ids:
+            owner_bots.setdefault(owner_id, []).append((bot_id, nickname))
+
+    for owner_id, bots in owner_bots.items():
+        deduped: list[tuple[int, str]] = []
+        seen: set[int] = set()
+        for bot_id, nickname in bots:
+            if bot_id in seen:
+                continue
+            seen.add(bot_id)
+            deduped.append((bot_id, nickname))
+
+        if len(deduped) == 1:
+            title, content = offline_mail_content(deduped[0][0], deduped[0][1])
+        else:
+            title, content = batch_offline_mail_content(deduped)
+
+        error = await send_mail_with_retry(title, content, owner_id)
+        if error:
+            for bot_id, nickname in deduped:
+                current = results[bot_id]
+                results[bot_id] = OwnerNotifyResult(
+                    bot_id=bot_id,
+                    nickname=nickname,
+                    sent=current.sent,
+                    failed=current.failed + 1,
+                    skipped_no_admins=False,
+                    errors=current.errors + (f"号主 {owner_id}: {error}",),
+                    notified_owner_ids=current.notified_owner_ids,
+                )
+        else:
+            for bot_id, nickname in deduped:
+                current = results[bot_id]
+                notified = tuple(dict.fromkeys((*current.notified_owner_ids, owner_id)))
+                results[bot_id] = OwnerNotifyResult(
+                    bot_id=bot_id,
+                    nickname=nickname,
+                    sent=current.sent + 1,
+                    failed=current.failed,
+                    skipped_no_admins=False,
+                    errors=current.errors,
+                    notified_owner_ids=notified,
+                )
+
+        await asyncio.sleep(OFFLINE_MAIL_SEND_INTERVAL_SEC)
+
+    return list(results.values())
 
 
 async def handle_offline_mail_command(
@@ -241,9 +398,15 @@ async def handle_offline_mail_command(
     if not targets:
         await matcher.finish("当前没有离线牛牛")
 
-    results: list[OwnerNotifyResult] = []
-    for bot_id, nickname in targets.items():
-        results.append(await notify_bot_offline_to_owners(bot_id, nickname))
+    if len(targets) == 1:
+        bot_id, nickname = next(iter(targets.items()))
+        results = [await notify_bot_offline_to_owners(bot_id, nickname)]
+    else:
+        await bot.send(
+            event,
+            "开始发送离线提醒邮件，号主相同时会合并为一封，请稍候…",
+        )
+        results = await send_batch_offline_mails_by_owner(targets)
 
     await matcher.finish(format_owner_notify_summary(results))
 
