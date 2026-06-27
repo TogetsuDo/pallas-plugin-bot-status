@@ -34,6 +34,7 @@ uv pip install pallas-plugin-bot-status
 | `牛牛在吗` | 群内 / 私聊 | 查看在线和离线情况。 |
 | `牛牛报数` / `牛牛出列` | 群内 | 在线牛牛依次报到。 |
 | `测试邮件` | 群内 / 私聊 | 测试邮件通知配置。 |
+| `离线邮件` | 群内 / 私聊 | 超管向离线牛牛号主发送提醒邮件。 |
 
 > 详细用法、限制条件和可用范围以帮助为主。
 
@@ -44,6 +45,7 @@ uv pip install pallas-plugin-bot-status
 | `bot_status.status` | 号主 |
 | `bot_status.count` | 所有人 |
 | `bot_status.test_mail` | 仅超管 |
+| `bot_status.offline_mail` | 仅超管 |
 
 ## 配置项
 

@@ -12,9 +12,11 @@ from nonebot import (
 from nonebot.adapters.onebot.v11 import (
     Bot,
     GroupMessageEvent,
+    Message,
     MessageEvent,
     NoticeEvent,
 )
+from nonebot.params import CommandArg
 from nonebot.plugin import PluginMetadata
 
 from pallas.api.perm import permission_for_command
@@ -44,7 +46,11 @@ from .bot_monitor import (
     list_connected_bots_in_group,
     offline_bots,
 )
-from .mail_notifier import handle_test_mail_command, notify_bot_offline
+from .mail_notifier import (
+    handle_offline_mail_command,
+    handle_test_mail_command,
+    notify_bot_offline,
+)
 
 __plugin_meta__ = PluginMetadata(
     name="牛牛状态",
@@ -53,6 +59,8 @@ __plugin_meta__ = PluginMetadata(
         usage_line("牛牛在吗", "查看在线和离线情况"),
         usage_line("牛牛报数 / 牛牛出列", "群内在线牛牛依次报到"),
         usage_line("测试邮件", "超管测试 SMTP"),
+        usage_line("离线邮件", "超管向离线牛牛号主发送提醒"),
+        usage_line("离线邮件 <QQ>", "仅向指定离线牛牛号主发送"),
     ),
     type="application",
     homepage=PLUGIN_HOMEPAGE,
@@ -60,7 +68,13 @@ __plugin_meta__ = PluginMetadata(
     extra={
         "version": PLUGIN_EXTRA_VERSION,
         "menu_template": PLUGIN_MENU_TEMPLATE,
-        "exact_plaintexts": ["牛牛在吗", "测试邮件", "牛牛报数", "牛牛出列"],
+        "exact_plaintexts": [
+            "牛牛在吗",
+            "测试邮件",
+            "离线邮件",
+            "牛牛报数",
+            "牛牛出列",
+        ],
         "command_permissions": [
             {
                 "id": "bot_status.status",
@@ -68,6 +82,11 @@ __plugin_meta__ = PluginMetadata(
                 "default": "bot_moderator",
             },
             {"id": "bot_status.test_mail", "label": "测试邮件", "default": "superuser"},
+            {
+                "id": "bot_status.offline_mail",
+                "label": "离线邮件",
+                "default": "superuser",
+            },
             {
                 "id": "bot_status.count",
                 "label": "牛牛报数 / 牛牛出列",
@@ -78,6 +97,7 @@ __plugin_meta__ = PluginMetadata(
             {"id": "bot_status.status", "cd_sec": 10},
             {"id": "bot_status.count", "cd_sec": 10},
             {"id": "bot_status.test_mail", "cd_sec": 10},
+            {"id": "bot_status.offline_mail", "cd_sec": 30},
         ],
         "ingress_fanout": {
             "scope": "shard_only",
@@ -105,6 +125,18 @@ __plugin_meta__ = PluginMetadata(
                 "command_permission": "bot_status.test_mail",
                 "brief_des": "发送测试邮件",
                 "detail_des": "向当前配置的通知邮箱发送一封测试邮件，确认 SMTP 是否可用。",
+            },
+            {
+                "func": "离线邮件",
+                "trigger_method": "on_cmd",
+                "trigger_scene": SCENE_BOTH,
+                "trigger_condition": "离线邮件",
+                "command_permission": "bot_status.offline_mail",
+                "brief_des": "向离线牛牛号主发信",
+                "detail_des": (
+                    "根据当前离线名册，向各离线牛牛号主的 QQ 邮箱发送提醒；"
+                    "可带 QQ 号仅通知指定牛牛。"
+                ),
             },
             {
                 "func": "牛牛依次报数",
@@ -139,10 +171,18 @@ __plugin_meta__ = PluginMetadata(
                         "keywords": "报数,出列,报到,依次",
                     },
                     {
-                        "title": "离线邮件通知",
+                        "title": "离线邮件",
                         "content": (
-                            "若牛牛离线过久且已配置 SMTP，维护者可能收到邮件提醒；"
-                            "私聊「测试邮件」可验证通知邮箱（维护者向）。"
+                            "超管可发送「离线邮件」，向当前离线牛牛的号主 QQ 邮箱发送提醒；"
+                            "也可发送「离线邮件 <QQ>」仅通知指定离线牛牛。"
+                        ),
+                        "keywords": "离线邮件,号主,提醒,手动",
+                    },
+                    {
+                        "title": "自动离线通知",
+                        "content": (
+                            "若牛牛离线过久且已配置 SMTP，系统可能自动向号主发信；"
+                            "私聊「测试邮件」可验证 SMTP。"
                         ),
                         "keywords": "邮件,离线,通知,测试邮件",
                     },
@@ -172,6 +212,12 @@ bot_count_cmd = on_command(
 test_mail_cmd = on_command(
     "测试邮件",
     permission=permission_for_command("bot_status.test_mail"),
+    priority=5,
+    block=True,
+)
+offline_mail_cmd = on_command(
+    "离线邮件",
+    permission=permission_for_command("bot_status.offline_mail"),
     priority=5,
     block=True,
 )
@@ -250,6 +296,12 @@ async def handle_bot_offline_events(event: NoticeEvent):
 async def _(bot: Bot, event: MessageEvent) -> None:
     """测试邮件"""
     await handle_test_mail_command(bot, event)
+
+
+@offline_mail_cmd.handle()
+async def _(bot: Bot, event: MessageEvent, args: Message = CommandArg()) -> None:  # noqa: B008
+    """离线邮件"""
+    await handle_offline_mail_command(bot, event, args)
 
 
 @bot_status_cmd.handle()
