@@ -18,9 +18,10 @@ class Config(BaseModel, extra="ignore"):
     bot_status_list_mode: StatusListModeSetting = Field(
         default="auto",
         description=(
-            "牛牛在吗名册：auto=分片 fleet、单进程 session；"
-            "session=本 worker 连接；fleet=协议 enabled+registry；"
-            "connected=全集群曾连 WS（不含 registry 幽灵号）。"
+            "牛牛在吗名册：auto=分片用协议登记、单进程用本机连接；"
+            "session=仅本进程已连接；"
+            "fleet=协议端已启用且登记；"
+            "connected=全集群曾上线（不含仅登记未连过的号）。"
         ),
     )
 

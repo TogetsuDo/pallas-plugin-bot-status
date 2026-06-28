@@ -29,7 +29,7 @@ def resolve_status_list_mode() -> ResolvedListMode:
 def status_inventory_bot_ids(
     *, list_mode: ResolvedListMode | None = None
 ) -> frozenset[int]:
-    """名册 QQ：session=本进程；connected=曾连 WS；fleet=协议端 enabled。"""
+    """名册 QQ：session=本进程；connected=曾上线；fleet=协议端已启用。"""
     mode = list_mode or resolve_status_list_mode()
     if mode == "fleet":
         return get_fleet_bot_ids()
@@ -53,7 +53,7 @@ def cluster_online_bot_ids_for_status(
     *,
     list_mode: ResolvedListMode | None = None,
 ) -> set[int]:
-    """在线集合：分片 fleet/connected 用 presence；其余用本进程 get_bots。"""
+    """在线集合：分片且 fleet/connected 时用集群在线表；否则用本进程 get_bots。"""
     from nonebot import get_bots as nb_get_bots
 
     mode = list_mode or resolve_status_list_mode()
