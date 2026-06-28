@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+- refactor(config): 名册模式 WebUI 说明去 fleet/worker/WS 等维护者黑话
+
 ## [4.0.11] - 2026-06-27
 - fix(offline_mail): 批量发信按号主合并、间隔与 Connection lost 重试，回复展示号主 QQ
 
