@@ -5,6 +5,7 @@
 
 ## [Unreleased]
 
+## [4.0.12] - 2026-06-28
 - refactor(config): 名册模式 WebUI 说明去 fleet/worker/WS 等维护者黑话
 
 ## [4.0.11] - 2026-06-27
